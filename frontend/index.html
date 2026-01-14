@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Legacy Modernization Dashboard</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #0f172a;
+        color: #e5e7eb;
+      }
+      header {
+        padding: 1rem 2rem;
+        background: #111827;
+        border-bottom: 1px solid #1f2933;
+      }
+      main {
+        max-width: 1100px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: 1.5rem;
+      }
+      h1 {
+        font-size: 1.5rem;
+        margin: 0;
+      }
+      .card {
+        background: #020617;
+        border-radius: 0.75rem;
+        padding: 1.25rem 1.5rem;
+        border: 1px solid #1f2937;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.6);
+      }
+      .card h2 {
+        margin-top: 0;
+        font-size: 1.1rem;
+        color: #f9fafb;
+      }
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-size: 0.85rem;
+        color: #9ca3af;
+      }
+      input[type="file"],
+      select {
+        width: 100%;
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+        border: 1px solid #374151;
+        background: #020617;
+        color: #e5e7eb;
+      }
+      button {
+        border-radius: 999px;
+        border: none;
+        padding: 0.55rem 1.4rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        background: linear-gradient(135deg, #22c55e, #22d3ee);
+        color: #020617;
+        box-shadow: 0 10px 30px rgba(22, 163, 74, 0.5);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+        box-shadow: none;
+      }
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+        margin-top: 0.75rem;
+      }
+      .metric {
+        background: radial-gradient(circle at top left, #22c55e22, #020617);
+        border-radius: 0.75rem;
+        padding: 0.75rem;
+        border: 1px solid #1f2937;
+      }
+      .metric-label {
+        font-size: 0.75rem;
+        color: #9ca3af;
+      }
+      .metric-value {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-top: 0.15rem;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.15rem 0.6rem;
+        border-radius: 999px;
+        background: #111827;
+        font-size: 0.7rem;
+        color: #9ca3af;
+      }
+      .status {
+        font-size: 0.8rem;
+        color: #9ca3af;
+        margin-top: 0.6rem;
+      }
+      ul {
+        padding-left: 1.1rem;
+        font-size: 0.8rem;
+        color: #9ca3af;
+      }
+      .badge {
+        display: inline-block;
+        padding: 0.15rem 0.5rem;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        background: #1f2937;
+        color: #e5e7eb;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Legacy Modernization Platform</h1>
+      <div style="font-size: 0.8rem; color: #9ca3af; margin-top: 0.25rem">
+        From VB/COBOL to modern Java/Python with documentation, evaluation, and
+        tests.
+      </div>
+    </header>
+    <main>
+      <section class="card">
+        <h2>1. Ingest Legacy Code & Generate Artifacts</h2>
+        <label for="files">Legacy source files (VB, COBOL, Java)</label>
+        <input id="files" type="file" multiple />
+        <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem">
+          <button id="btn-run">Run pipeline</button>
+          <select id="target-lang">
+            <option value="java">Java (Spring-style)</option>
+            <option value="python">Python (FastAPI-style)</option>
+          </select>
+        </div>
+        <div class="status" id="status"></div>
+        <div style="margin-top: 0.75rem; font-size: 0.8rem; color: #9ca3af">
+          This demo UI calls the backend APIs to:
+          <span class="badge">/ingest/legacy-code</span>,
+          <span class="badge">/docs/generate</span>,
+          <span class="badge">/evaluation/metrics</span>,
+          <span class="badge">/codegen/generate</span>,
+          <span class="badge">/testgen/generate</span>.
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>
+          2. Documentation Quality Dashboard
+          <span id="session-pill" class="pill" style="display: none"></span>
+        </h2>
+        <div class="metrics-grid">
+          <div class="metric">
+            <div class="metric-label">Module coverage</div>
+            <div id="modules-coverage" class="metric-value">–</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Data coverage</div>
+            <div id="data-coverage" class="metric-value">–</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Interface coverage</div>
+            <div id="iface-coverage" class="metric-value">–</div>
+          </div>
+        </div>
+        <div style="margin-top: 0.75rem; font-size: 0.8rem">
+          <span class="metric-label">Overall confidence</span>
+          <div id="overall-confidence" class="metric-value">–</div>
+        </div>
+        <div style="margin-top: 0.75rem">
+          <span class="metric-label">Hotspots for manual review</span>
+          <ul id="hotspots">
+            <li>No hotspots yet. Run the pipeline to see suggestions.</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const statusEl = document.getElementById("status");
+      const btnRun = document.getElementById("btn-run");
+      const targetLangEl = document.getElementById("target-lang");
+      const sessionPill = document.getElementById("session-pill");
+      const metricModules = document.getElementById("modules-coverage");
+      const metricData = document.getElementById("data-coverage");
+      const metricIface = document.getElementById("iface-coverage");
+      const overallConfidence = document.getElementById("overall-confidence");
+      const hotspotsList = document.getElementById("hotspots");
+
+      function setStatus(msg) {
+        statusEl.textContent = msg;
+      }
+
+      function pct(x) {
+        return x == null ? "–" : Math.round(x * 100) + "%";
+      }
+
+      async function runPipeline() {
+        const filesInput = document.getElementById("files");
+        if (!filesInput.files.length) {
+          alert("Please select at least one legacy source file.");
+          return;
+        }
+        btnRun.disabled = true;
+        setStatus("Uploading legacy code...");
+
+        const formData = new FormData();
+        for (const f of filesInput.files) {
+          formData.append("files", f);
+        }
+
+        try {
+          const ingestResp = await fetch("/ingest/legacy-code", {
+            method: "POST",
+            body: formData,
+          });
+          const ingestJson = await ingestResp.json();
+          const sessionId = ingestJson.session_id || "demo-session";
+
+          sessionPill.style.display = "inline-flex";
+          sessionPill.textContent = `Session: ${sessionId}`;
+          setStatus("Generating documentation...");
+
+          await fetch("/docs/generate?session_id=" + encodeURIComponent(sessionId), {
+            method: "POST",
+          });
+
+          setStatus("Fetching evaluation metrics...");
+          const metricsResp = await fetch(
+            "/evaluation/metrics?session_id=" + encodeURIComponent(sessionId)
+          );
+          const metrics = await metricsResp.json();
+
+          metricModules.textContent = pct(metrics.coverage?.modules);
+          metricData.textContent = pct(metrics.coverage?.data_elements);
+          metricIface.textContent = pct(metrics.coverage?.interfaces);
+          overallConfidence.textContent = pct(metrics.confidence?.overall);
+
+          hotspotsList.innerHTML = "";
+          if (metrics.hotspots && metrics.hotspots.length) {
+            for (const h of metrics.hotspots) {
+              const li = document.createElement("li");
+              li.textContent = h.description || JSON.stringify(h);
+              hotspotsList.appendChild(li);
+            }
+          } else {
+            const li = document.createElement("li");
+            li.textContent =
+              "No hotspots reported in this placeholder implementation.";
+            hotspotsList.appendChild(li);
+          }
+
+          setStatus("Generating target code and tests...");
+          const targetLang = targetLangEl.value;
+          await fetch(
+            "/codegen/generate?session_id=" +
+              encodeURIComponent(sessionId) +
+              "&target_lang=" +
+              encodeURIComponent(targetLang),
+            { method: "POST" }
+          );
+          await fetch(
+            "/testgen/generate?session_id=" +
+              encodeURIComponent(sessionId) +
+              "&target_lang=" +
+              encodeURIComponent(targetLang),
+            { method: "POST" }
+          );
+
+          setStatus(
+            "Pipeline complete (placeholder). Backend is ready to be wired to real parsers and LLMs."
+          );
+        } catch (e) {
+          console.error(e);
+          setStatus("Error running pipeline. Check backend logs.");
+        } finally {
+          btnRun.disabled = false;
+        }
+      }
+
+      btnRun.addEventListener("click", runPipeline);
+    </script>
+  </body>
+</html>
+
