@@ -135,8 +135,17 @@
         <h2>1. Ingest Legacy Code & Generate Artifacts</h2>
         <label for="files">Legacy source files (VB, COBOL, Java)</label>
         <input id="files" type="file" multiple />
-        <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem">
+        <div style="margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.5rem">
           <button id="btn-run">Run pipeline</button>
+          <button id="btn-docs" style="background: linear-gradient(135deg, #3b82f6, #22d3ee);">
+            Docs only
+          </button>
+          <button id="btn-code" style="background: linear-gradient(135deg, #a855f7, #6366f1);">
+            Code only
+          </button>
+          <button id="btn-tests" style="background: linear-gradient(135deg, #f59e0b, #f97316);">
+            Tests only
+          </button>
           <select id="target-lang">
             <option value="java">Java (Spring-style)</option>
             <option value="python">Python (FastAPI-style)</option>
@@ -188,6 +197,9 @@
     <script>
       const statusEl = document.getElementById("status");
       const btnRun = document.getElementById("btn-run");
+      const btnDocs = document.getElementById("btn-docs");
+      const btnCode = document.getElementById("btn-code");
+      const btnTests = document.getElementById("btn-tests");
       const targetLangEl = document.getElementById("target-lang");
       const sessionPill = document.getElementById("session-pill");
       const metricModules = document.getElementById("modules-coverage");
@@ -204,13 +216,26 @@
         return x == null ? "–" : Math.round(x * 100) + "%";
       }
 
-      async function runPipeline() {
+      const API_BASE = "http://127.0.0.1:8000";
+
+      let cachedSessionId = null;
+
+      function disableAll(disabled) {
+        btnRun.disabled = disabled;
+        btnDocs.disabled = disabled;
+        btnCode.disabled = disabled;
+        btnTests.disabled = disabled;
+        targetLangEl.disabled = disabled;
+      }
+
+      async function ensureSession() {
+        if (cachedSessionId) return cachedSessionId;
         const filesInput = document.getElementById("files");
         if (!filesInput.files.length) {
           alert("Please select at least one legacy source file.");
-          return;
+          throw new Error("No files selected");
         }
-        btnRun.disabled = true;
+
         setStatus("Uploading legacy code...");
 
         const formData = new FormData();
@@ -218,64 +243,91 @@
           formData.append("files", f);
         }
 
-        try {
-          const ingestResp = await fetch("/ingest/legacy-code", {
-            method: "POST",
-            body: formData,
-          });
-          const ingestJson = await ingestResp.json();
-          const sessionId = ingestJson.session_id || "demo-session";
+        const ingestResp = await fetch(`${API_BASE}/ingest/legacy-code`, {
+          method: "POST",
+          body: formData,
+        });
+        const ingestJson = await ingestResp.json();
+        const sessionId = ingestJson.session_id || "demo-session";
+        cachedSessionId = sessionId;
 
-          sessionPill.style.display = "inline-flex";
-          sessionPill.textContent = `Session: ${sessionId}`;
-          setStatus("Generating documentation...");
+        sessionPill.style.display = "inline-flex";
+        sessionPill.textContent = `Session: ${sessionId}`;
+        return sessionId;
+      }
 
-          await fetch("/docs/generate?session_id=" + encodeURIComponent(sessionId), {
-            method: "POST",
-          });
+      async function runDocsOnly() {
+        const sessionId = await ensureSession();
+        setStatus("Generating documentation...");
+        await fetch(
+          `${API_BASE}/docs/generate?session_id=${encodeURIComponent(sessionId)}`,
+          { method: "POST" }
+        );
+        setStatus("Fetching evaluation metrics...");
+        const metricsResp = await fetch(
+          `${API_BASE}/evaluation/metrics?session_id=${encodeURIComponent(sessionId)}`
+        );
+        const metrics = await metricsResp.json();
+        metricModules.textContent = pct(metrics.coverage?.modules);
+        metricData.textContent = pct(metrics.coverage?.data_elements);
+        metricIface.textContent = pct(metrics.coverage?.interfaces);
+        overallConfidence.textContent = pct(metrics.confidence?.overall);
 
-          setStatus("Fetching evaluation metrics...");
-          const metricsResp = await fetch(
-            "/evaluation/metrics?session_id=" + encodeURIComponent(sessionId)
-          );
-          const metrics = await metricsResp.json();
-
-          metricModules.textContent = pct(metrics.coverage?.modules);
-          metricData.textContent = pct(metrics.coverage?.data_elements);
-          metricIface.textContent = pct(metrics.coverage?.interfaces);
-          overallConfidence.textContent = pct(metrics.confidence?.overall);
-
-          hotspotsList.innerHTML = "";
-          if (metrics.hotspots && metrics.hotspots.length) {
-            for (const h of metrics.hotspots) {
-              const li = document.createElement("li");
-              li.textContent = h.description || JSON.stringify(h);
-              hotspotsList.appendChild(li);
-            }
-          } else {
+        hotspotsList.innerHTML = "";
+        if (metrics.hotspots && metrics.hotspots.length) {
+          for (const h of metrics.hotspots) {
             const li = document.createElement("li");
-            li.textContent =
-              "No hotspots reported in this placeholder implementation.";
+            li.textContent = h.description || JSON.stringify(h);
             hotspotsList.appendChild(li);
           }
+        } else {
+          const li = document.createElement("li");
+          li.textContent =
+            "No hotspots reported in this placeholder implementation.";
+          hotspotsList.appendChild(li);
+        }
+        setStatus("Docs step complete (currently placeholder).");
+      }
 
-          setStatus("Generating target code and tests...");
-          const targetLang = targetLangEl.value;
-          await fetch(
-            "/codegen/generate?session_id=" +
-              encodeURIComponent(sessionId) +
-              "&target_lang=" +
-              encodeURIComponent(targetLang),
-            { method: "POST" }
-          );
-          await fetch(
-            "/testgen/generate?session_id=" +
-              encodeURIComponent(sessionId) +
-              "&target_lang=" +
-              encodeURIComponent(targetLang),
-            { method: "POST" }
-          );
+      async function runCodeOnly() {
+        const sessionId = await ensureSession();
+        setStatus("Generating target code...");
+        const targetLang = targetLangEl.value;
+        await fetch(
+          `${API_BASE}/codegen/generate?session_id=${encodeURIComponent(
+            sessionId
+          )}&target_lang=${encodeURIComponent(targetLang)}`,
+          { method: "POST" }
+        );
+        setStatus("Code generation step complete (currently placeholder).");
+      }
 
+      async function runTestsOnly() {
+        const sessionId = await ensureSession();
+        setStatus("Generating test suites...");
+        const targetLang = targetLangEl.value;
+        await fetch(
+          `${API_BASE}/testgen/generate?session_id=${encodeURIComponent(
+            sessionId
+          )}&target_lang=${encodeURIComponent(targetLang)}`,
+          { method: "POST" }
+        );
+        setStatus("Test generation step complete (currently placeholder).");
+      }
+
+      async function runPipeline() {
+        const filesInput = document.getElementById("files");
+        if (!filesInput.files.length) {
+          alert("Please select at least one legacy source file.");
+          return;
+        }
+        disableAll(true);
+        try {
+          await ensureSession();
+          await runDocsOnly();
+          setStatus("Generating code and tests...");
+          await runCodeOnly();
+          await runTestsOnly();
           setStatus(
             "Pipeline complete (placeholder). Backend is ready to be wired to real parsers and LLMs."
           );
@@ -283,11 +335,32 @@
           console.error(e);
           setStatus("Error running pipeline. Check backend logs.");
         } finally {
-          btnRun.disabled = false;
+          disableAll(false);
         }
       }
 
       btnRun.addEventListener("click", runPipeline);
+      btnDocs.addEventListener("click", () => {
+        disableAll(true);
+        runDocsOnly().catch((e) => {
+          console.error(e);
+          setStatus("Error generating docs.");
+        }).finally(() => disableAll(false));
+      });
+      btnCode.addEventListener("click", () => {
+        disableAll(true);
+        runCodeOnly().catch((e) => {
+          console.error(e);
+          setStatus("Error generating code.");
+        }).finally(() => disableAll(false));
+      });
+      btnTests.addEventListener("click", () => {
+        disableAll(true);
+        runTestsOnly().catch((e) => {
+          console.error(e);
+          setStatus("Error generating tests.");
+        }).finally(() => disableAll(false));
+      });
     </script>
   </body>
 </html>
