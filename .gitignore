@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+backend/__pycache__/
+backend/routers/__pycache__/
+frontend/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+env/
+venv/
+ENV/
+*.egg
+*.egg-info/
+dist/
+build/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*.DS_Store
+
+# Project output
+output/
+
+# OS / misc
+Thumbs.db
+*.log
+
+# Node / frontend (if added later)
+node_modules/
+
